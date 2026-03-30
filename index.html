@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>清水ヘッド計算（Web版）</title>
+
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 800px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .box {
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 6px;
+            margin: 4px 0 10px 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+        }
+
+        .result-box {
+            background: #e8f4ff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        small { color: #555; }
+    </style>
+</head>
+
+<body>
+
+<h2>清水ヘッド計算（Web版）</h2>
+
+<form method="POST">
+
+    <div class="grid">
+
+        <!-- 共通 -->
+        <div class="box">
+            <h3>共通</h3>
+
+            流量 Q [m3/min]
+            <input name="Q" value="{{ request.form.get('Q', '') }}" required>
+
+            管種
+            <select id="pipe" name="pipe">
+                <option value="SGP"  {% if request.form.get('pipe')=='SGP' %}selected{% endif %}>SGP</option>
+                <option value="STPG" {% if request.form.get('pipe')=='STPG' %}selected{% endif %}>STPG</option>
+                <option value="SUS"  {% if request.form.get('pipe')=='SUS' %}selected{% endif %}>SUS</option>
+                <option value="PVC"  {% if request.form.get('pipe')=='PVC' %}selected{% endif %}>PVC</option>
+                <option value="DIP"  {% if request.form.get('pipe')=='DIP' %}selected{% endif %}>ダクタイル</option>
+            </select>
+
+            粗さ ε [m]
+            <input id="eps" name="eps" value="{{ request.form.get('eps', '') }}" required>
+
+            入り部形状
+            <select name="inlet_shape">
+                <option value="0.5">角端</option>
+                <option value="0.25">面取り</option>
+                <option value="0.06">丸み付</option>
+                <option value="0.55">突き出し</option>
+                <option value="2.0">面取り突き出し</option>
+            </select>
+        </div>
+
+        <!-- 入口側 -->
+        <div class="box">
+            <h3>入口側</h3>
+
+            入口管径 D_in [mm]
+            <input name="D_in" value="{{ request.form.get('D_in', '') }}" required>
+
+            入口直管長 L_in [m]
+            <input name="L_in" value="{{ request.form.get('L_in', '') }}" required>
+
+            H_in [m]
+            <input name="H_in" value="{{ request.form.get('H_in', '') }}" required>
+            <small>タンク水位からポンプ吸込中心までの高さ差。</small>
+
+            <h4>継手</h4>
+            45°エルボ <input name="elbow45_in" value="{{ request.form.get('elbow45_in', '0') }}">
+            90°エルボ <input name="elbow90_in" value="{{ request.form.get('elbow90_in', '0') }}">
+            Tピース <input name="tee_in" value="{{ request.form.get('tee_in', '0') }}">
+            仕切弁 全開 <input name="gate_full_in" value="{{ request.form.get('gate_full_in', '0') }}">
+            玉形弁 <input name="globe_in" value="{{ request.form.get('globe_in', '0') }}">
+            逆止弁 <input name="check_in" value="{{ request.form.get('check_in', '0') }}">
+        </div>
+
+        <!-- 出口側 -->
+        <div class="box">
+            <h3>出口側</h3>
+
+            出口管径 D_out [mm]
+            <input name="D_out" value="{{ request.form.get('D_out', '') }}" required>
+
+            出口直管長 L_out [m]
+            <input name="L_out" value="{{ request.form.get('L_out', '') }}" required>
+
+            H_out [m]
+            <input name="H_out" value="{{ request.form.get('H_out', '') }}" required>
+            <small>ポンプ吐出中心から配管出口までの高さ差。</small>
+
+            <h4>継手</h4>
+            45°エルボ <input name="elbow45_out" value="{{ request.form.get('elbow45_out', '0') }}">
+            90°エルボ <input name="elbow90_out" value="{{ request.form.get('elbow90_out', '0') }}">
+            Tピース <input name="tee_out" value="{{ request.form.get('tee_out', '0') }}">
+            仕切弁 全開 <input name="gate_full_out" value="{{ request.form.get('gate_full_out', '0') }}">
+            玉形弁 <input name="globe_out" value="{{ request.form.get('globe_out', '0') }}">
+            逆止弁 <input name="check_out" value="{{ request.form.get('check_out', '0') }}">
+        </div>
+
+        <!-- 結果 -->
+        <div class="box">
+            <h3>結果</h3>
+
+            {% if result %}
+            <div class="result-box">
+                粗さ ε：{{ result.eps }}<br><br>
+
+                HST：{{ result.Hst }} m<br>
+                HDF：{{ result.Hdf }} m<br>
+                全揚程 H：{{ result.H }} m<br><br>
+
+                【入口側】<br>
+                v：{{ result.v_in }} m/s<br>
+                Re：{{ result.Re_in }}<br>
+                f：{{ result.f_in }}<br>
+                Leq：{{ result.Leq_in }} m<br><br>
+
+                【出口側】<br>
+                v：{{ result.v_out }} m/s<br>
+                Re：{{ result.Re_out }}<br>
+                f：{{ result.f_out }}<br>
+                Leq：{{ result.Leq_out }} m
+            </div>
+            {% else %}
+            <p>計算するとここに表示されます。</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <button type="submit">計算</button>
+    <button type="reset" style="margin-top:10px; background:#eee;">リセット</button>
+
+</form>
+
+<script>
+    const roughness = {
+        "SGP": 0.00015,
+        "STPG": 0.000045,
+        "SUS": 0.0000015,
+        "PVC": 0.000001,
+        "DIP": 0.00026
+    };
+
+    document.getElementById("pipe").addEventListener("change", function() {
+        document.getElementById("eps").value = roughness[this.value];
+    });
+</script>
+
+</body>
+</html>
